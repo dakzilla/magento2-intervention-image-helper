@@ -1,0 +1,28 @@
+{
+  "name": "dakzilla/intervention-image-helper",
+  "description": "Intervention Image helper for Magento 2",
+  "type": "magento2-module",
+  "version": "1.0.0",
+  "license": [
+    "MIT"
+  ],
+  "authors": [
+    {
+      "name": "Simon Dakin",
+      "email": "hello@simondakin.com"
+    }
+  ],
+  "require": {
+    "php": "~7.0.0",
+    "intervention/image": "~2.3",
+    "jeremeamia/superclosure": "^2.0"
+  },
+  "autoload": {
+    "files": [
+      "registration.php"
+    ],
+    "psr-4": {
+      "Magemtl\\Intervention\\": ""
+    }
+  }
+}
