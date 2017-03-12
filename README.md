@@ -2,7 +2,8 @@
 A useful template helper for applying transformations to images in Magento 2 using the [Intervention Image](http://image.intervention.io) library.
 
 ##Installation
-`composer require "dakzilla/intervention-image-helper":"~1.0"`
+`composer require "dakzilla/intervention-image-helper:~1.0"`
+`php bin/magento setup:upgrade`
 
 ##Features
 + The image helper can be called from any template, without the need to create a custom block
