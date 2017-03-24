@@ -21,7 +21,6 @@ namespace Dakzilla\Intervention\Helper;
  * @method Image invert()                                                                                                                             Reverses all colors of the current image.
  * @method Image limitColors(integer $count, mixed $matte = null)                                                                                     Method converts the existing colors of the current image into a color table with a given maximum count of colors. The function preserves as much alpha channel information as possible and blends transarent pixels against a optional matte color.
  * @method Image line(integer $x1, integer $y1, integer $x2, integer $y2, \Closure $callback = null)                                                  Draw a line from x, y point 1 to x, y point 2 on current image. Define color and / or width of line in an optional Closure callback.
- * @method Image make(mixed $source)                                                                                                                  Universal factory method to create a new image instance from source, which can be a filepath, a GD image resource, an Imagick object or a binary image data.
  * @method Image mask(mixed $source, boolean $mask_with_alpha)                                                                                        Apply a given image source as alpha mask to the current image to change current opacity. Mask will be resized to the current image size. By default a greyscale version of the mask is converted to alpha values, but you can set mask_with_alpha to apply the actual alpha channel. Any transparency values of the current image will be maintained.
  * @method Image opacity(integer $transparency)                                                                                                       Set the opacity in percent of the current image ranging from 100% for opaque and 0% for full transparency.
  * @method Image orientate()                                                                                                                          This method reads the EXIF image profile setting 'Orientation' and performs a rotation on the image to display the image correctly.
@@ -41,6 +40,8 @@ namespace Dakzilla\Intervention\Helper;
 class Image extends \Magento\Framework\App\Helper\AbstractHelper
 {
     const CACHE_FOLDER_XML_PATH = 'dakzilla/intervention/cache_folder';
+    const DEFAULT_QUALITY_XML_PATH = 'dakzilla/intervention/default_quality';
+    const COMPRESS_IMAGES_XML_PATH = 'dakzilla/intervention/compress_images';
 
     /** @var string */
     protected $_mediaPath;
@@ -49,7 +50,13 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
     protected $_mediaUrl;
 
     /** @var array */
-    protected $_commandQueue;
+    protected $_commandQueue = [];
+
+    /** @var int */
+    protected $_quality;
+
+    /** @var bool */
+    protected $_compressImages;
 
     /** @var string */
     protected $_originalImagePath;
@@ -71,19 +78,23 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
 
     /** @var array */
     protected $_unavailableMethods = [
-        'save',
-        'make',
-        'cache',
         'backup',
-        'exif',
-        'iptc',
-        'pickColor',
+        'cache',
         'canvas',
+        'destroy',
+        'encode',
+        'exif',
+        'filesize',
+        'getCore',
+        'iptc',
+        'make',
+        'mime',
+        'pickColor',
+        'psrResponse',
         'reset',
         'response',
-        'stream',
-        'psrResponse',
-        'destroy'
+        'save',
+        'stream'
     ];
 
     /**
@@ -110,13 +121,12 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
         $this->_mediaDirectoryWrite = $filesystem->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
         $this->_imageManager = $imageManager;
         $this->_closureSerializer = $serializer;
-        $this->_commandQueue = [];
 
         parent::__construct($context);
     }
 
     /**
-     * Queue calls to Intervention Image methods
+     * Queue calls to Intervention Image
      * @param $name
      * @param $arguments
      * @return $this
@@ -124,15 +134,7 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
      */
     public function __call($name, $arguments)
     {
-        if ($name === 'make') {
-            if (!count($arguments) || !is_string($arguments[0])) {
-                throw new \Magento\Framework\Exception\LocalizedException(
-                    __('Image Helper must be initialized using a file path. Please refer to the documentation.')
-                );
-            }
-            $this->_commandQueue = [];
-            $this->_resolveImagePath($arguments[0]);
-        } else if (!in_array($name, $this->_unavailableMethods)) {
+        if (!in_array($name, $this->_unavailableMethods) && !in_array($name, get_class_methods($this))) {
             $this->_commandQueue[] = compact('name', 'arguments');
         }
 
@@ -153,12 +155,35 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     /**
+     * Set quality for the encoded images
+     * @param int $quality
+     */
+    public function setQuality(int $quality)
+    {
+        $this->_quality = $quality;
+
+        return $this;
+    }
+
+    /**
+     * Set whether images should be compressed or not
+     * @param bool $compressImages
+     * @return $this
+     */
+    public function setCompressImages(bool $compressImages = true)
+    {
+        $this->_compressImages = $compressImages;
+
+        return $this;
+    }
+
+    /**
      * Resolve an absolute path to the original image file from the argument
      * @param string $imagePath
      * @return mixed|string
      * @throws \Magento\Framework\Exception\LocalizedException
      */
-    protected function _resolveImagePath(string $imagePath)
+    public function make(string $imagePath)
     {
         if (filter_var($imagePath, FILTER_VALIDATE_URL)) {
             $imagePath = str_replace($this->_mediaUrl, '', $imagePath);
@@ -166,17 +191,17 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
 
         $imagePath = $this->_mediaDirectoryRead->getAbsolutePath($imagePath);
 
-        if (is_file($imagePath)) {
-            $this->_originalImagePath = $imagePath;
-        } else {
+        if (!is_file($imagePath)) {
             throw new \Magento\Framework\Exception\LocalizedException(
                 __('Could not resolve image path from string. Please provide a valid file path.')
             );
         }
 
+        $this->_commandQueue = [];
+        $this->_originalImagePath = $imagePath;
         $this->_image = $this->_imageManager->make($this->_originalImagePath);
 
-        return $this->_originalImagePath;
+        return $this;
     }
 
     /**
@@ -185,6 +210,7 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
      */
     protected function _getCachedImage()
     {
+
         if (!is_file($this->_getCachedFilePath())) {
             $this->_setCachedImage();
         }
@@ -204,7 +230,13 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
         $savePath = $this->_getCachedFilePath(false, true);
         $saveDirectory = dirname($this->_getCachedFilePath(false, true));
         $this->_mediaDirectoryWrite->create($saveDirectory);
-        $encodedImage = $this->_image->stream()->getContents();
+
+        if ($this->_getCompressImages()) {
+            $encodedImage = $this->_image->stream(null, $this->_getQuality())->getContents();
+        } else {
+            $encodedImage = $this->_image->stream()->getContents();
+        }
+
         $this->_mediaDirectoryWrite->writeFile($savePath, $encodedImage);
     }
 
@@ -228,7 +260,37 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
             }
         }
 
+        if ($this->_getCompressImages()) {
+            $argumentString .= $this->_getQuality();
+        }
+
         return $argumentString;
+    }
+
+    /**
+     * Returns whether images should be compressed or not
+     * @return bool
+     */
+    protected function _getCompressImages()
+    {
+        if (!is_bool($this->_compressImages)) {
+            $this->_compressImages = (bool)$this->scopeConfig->getValue(self::COMPRESS_IMAGES_XML_PATH);
+        }
+
+        return $this->_compressImages;
+    }
+
+    /**
+     * Returns the quality of the encoded image
+     * @return int
+     */
+    protected function _getQuality()
+    {
+        if (!is_int($this->_quality)) {
+            $this->_quality = (int)$this->scopeConfig->getValue(self::DEFAULT_QUALITY_XML_PATH);
+        }
+
+        return $this->_quality;
     }
 
     /**
@@ -246,7 +308,7 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private function _getFilename()
     {
-        $pathSegments = explode('/', $this->_originalImagePath);
+        $pathSegments = explode(DIRECTORY_SEPARATOR, $this->_originalImagePath);
 
         return end($pathSegments);
     }
@@ -276,6 +338,6 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private function _getCachedFilePath($fileUrl = false, $relative = false)
     {
-        return ($relative ? '' : ($fileUrl ? $this->_mediaUrl : $this->_mediaPath)) . $this->_getSavePath() . DIRECTORY_SEPARATOR . $this->_getFilename();
+        return ($relative ? '' : ($fileUrl ? $this->_mediaUrl : $this->_mediaPath . DIRECTORY_SEPARATOR)) . $this->_getSavePath() . DIRECTORY_SEPARATOR . $this->_getFilename();
     }
 }

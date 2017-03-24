@@ -11,6 +11,7 @@ A useful template helper for applying transformations to images in Magento 2 usi
 + All of the transformation methods can be chained
 + By using an @var [DocComment](https://phpdoc.org/docs/latest/references/phpdoc/tags/var.html) as shown in the example below, your IDE will show autocompletion and documentation hints for each method
 + The images are cached automatically on creation, and are loaded from cache on every subsequent call
++ Ability to set JPEG quality directly in template
 + The module works great with Apptrian image optimizer for Magento 2 or any other image optimization module
 
 ## Usage
@@ -30,7 +31,6 @@ $image = $imageHelper->make('http://mysite.com/media/wysiwyg/home/home-main.jpg'
 ```
 ...or a relative image path
 ```
-
 $image = $imageHelper->make('test/Pineapple.jpg')
 
 # Will resolve to /path/to/your/site/pub/media/test/Pineapple.jpg
@@ -60,11 +60,34 @@ Or, you can do all of these at once with a short, chained syntax:
 
 The above example will create a horizontally-flipped, color-inverted and automatically resized version of the original picture that retains the correct ratio. Of course, a more common usage would be to simply crop and/or resize a picture without applying cosmetic filters.
 
-### Clearing the image cache
+### Enabling image compression and setting the JPEG quality
+Once set as shown below, image compression and quality will be applied to every image that is generated with this module. This means that if you are generating multiple images on a single page, they will all share the compression settings.
+
+#### Defaults
++ Image compression: Off
++ JPEG quality: 85%
+
+From the template, call these methods on the image helper to enable JPEG compression and set the quality (1-100, lowest to highest):
+```
+<?php
+/** @var \Dakzilla\Intervention\Helper\Image $imageHelper */
+$imageHelper->setCompressImages()->setQuality(75);
+?>
+```
+
+If you're okay with the default quality level, you only need to call the `setCompressImages` method to enable compression:
+```
+<?php
+/** @var \Dakzilla\Intervention\Helper\Image $imageHelper */
+$imageHelper->setCompressImages();
+?>
+```
+
+## Clearing the image cache
 Delete the image cache directory. By default, this is `<magento root>/pub/media/cache/dakzilla_intervention`
 To avoid potential permission issues, do not re-create this folder after deleting it. Let Magento re-create it automatically. 
 
-### Available transformation methods
+## Available transformation methods
 The helper provides IDE-compatible method hints for every available transformation method. For the most part, these methods are self-explanatory. For further information on these methods, please refer to the [Intervention Image documentation](http://image.intervention.io/).
  
  + blur
@@ -102,10 +125,8 @@ The helper provides IDE-compatible method hints for every available transformati
 
 ## Issues
 + This module does not include tests
-+ This module does not provide a way to control file quality or choose an image manipulation library
++ This module does not provide a way to choose the image manipulation library (defaults to GD)
 + Some features from the Intervention Image library (like canvas or output streaming) are not available (but may be implemented later)
-+ File name collision is not prevented at the moment. Try to use distinct file names.
-+ This module hasn't been tested with a CDN
 + This module throws exceptions instead of failing gracefully
 
 ## Compatibility
@@ -121,7 +142,8 @@ This module has been tested with Magento 2.1.5. As Magento 2 is still evolving r
 + Provide a way to clear image cache from admin and command line
 + Allow the module to fail gracefully in case of a file error
 + Tests
-+ Provide more control to end-user, like choosing the image manipulation library and the quality of saved images
++ Provide more control to end-user, like choosing the image manipulation library
++ Enable JPEG quality control in admin
 + Allow cached images to expire
 + Automatically clean up expired image caches via cron
 + A way to create image templates (pre-made styles) to provide a shorter, cleaner template syntax
