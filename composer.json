@@ -2,7 +2,7 @@
   "name": "dakzilla/intervention-image-helper",
   "description": "Intervention Image helper for Magento 2",
   "type": "magento2-module",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "license": [
     "MIT"
   ],

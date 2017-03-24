@@ -82,7 +82,8 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
         'reset',
         'response',
         'stream',
-        'psrResponse'
+        'psrResponse',
+        'destroy'
     ];
 
     /**
@@ -129,6 +130,7 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
                     __('Image Helper must be initialized using a file path. Please refer to the documentation.')
                 );
             }
+            $this->_commandQueue = [];
             $this->_resolveImagePath($arguments[0]);
         } else if (!in_array($name, $this->_unavailableMethods)) {
             $this->_commandQueue[] = compact('name', 'arguments');
