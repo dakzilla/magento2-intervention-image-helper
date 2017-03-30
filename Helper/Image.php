@@ -103,24 +103,20 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
      * @param \Magento\Framework\App\Filesystem\DirectoryList $directoryList
      * @param \Magento\Framework\Filesystem $filesystem
      * @param \Magento\Framework\App\Helper\Context $context
-     * @param \SuperClosure\Serializer $serializer
-     * @param \Intervention\Image\ImageManager $imageManager
      */
     public function __construct(
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         \Magento\Framework\App\Filesystem\DirectoryList $directoryList,
         \Magento\Framework\Filesystem $filesystem,
-        \Magento\Framework\App\Helper\Context $context,
-        \SuperClosure\Serializer $serializer,
-        \Intervention\Image\ImageManager $imageManager
+        \Magento\Framework\App\Helper\Context $context
     )
     {
         $this->_mediaUrl = $storeManager->getStore()->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_MEDIA);
         $this->_mediaPath = $directoryList->getPath(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
         $this->_mediaDirectoryRead = $filesystem->getDirectoryRead(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
         $this->_mediaDirectoryWrite = $filesystem->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
-        $this->_imageManager = $imageManager;
-        $this->_closureSerializer = $serializer;
+        $this->_closureSerializer = new \SuperClosure\Serializer(new \SuperClosure\Analyzer\TokenAnalyzer);
+        $this->_imageManager = new \Intervention\Image\ImageManager;
 
         parent::__construct($context);
     }
