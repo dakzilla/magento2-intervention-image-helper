@@ -139,7 +139,7 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
      */
     public function get()
     {
-        if ($this->_originalImagePath && $this->_image) {
+        if ($this->_originalImagePath) {
             return $this->_getCachedImage();
         }
 
@@ -174,7 +174,6 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
 
         if (is_file($absoluteImagePath)) {
             $this->_originalImagePath = $absoluteImagePath;
-            $this->_image = $this->_imageManager->make($this->_originalImagePath);
         }
 
         return $this;
@@ -199,6 +198,8 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
      */
     protected function _setCachedImage()
     {
+        $this->_image = $this->_imageManager->make($this->_originalImagePath);
+
         foreach ($this->_commandQueue as $command) {
             $this->_image = call_user_func_array([$this->_image, $command['name']], $command['arguments']);
         }
