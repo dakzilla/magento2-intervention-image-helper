@@ -40,8 +40,7 @@ namespace Dakzilla\Intervention\Helper;
 class Image extends \Magento\Framework\App\Helper\AbstractHelper
 {
     const CACHE_FOLDER_XML_PATH = 'dakzilla/intervention/cache_folder';
-    const DEFAULT_QUALITY_XML_PATH = 'dakzilla/intervention/default_quality';
-    const COMPRESS_IMAGES_XML_PATH = 'dakzilla/intervention/compress_images';
+    const DEFAULT_QUALITY = 100;
 
     /** @var string */
     protected $_mediaPath;
@@ -54,9 +53,6 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
 
     /** @var int */
     protected $_quality;
-
-    /** @var bool */
-    protected $_compressImages;
 
     /** @var string */
     protected $_originalImagePath;
@@ -143,7 +139,7 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
      */
     public function get()
     {
-        if (count($this->_commandQueue) && $this->_originalImagePath) {
+        if ($this->_originalImagePath && $this->_image) {
             return $this->_getCachedImage();
         }
 
@@ -162,40 +158,24 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     /**
-     * Set whether images should be compressed or not
-     * @param bool $compressImages
-     * @return $this
-     */
-    public function setCompressImages(bool $compressImages = true)
-    {
-        $this->_compressImages = $compressImages;
-
-        return $this;
-    }
-
-    /**
      * Resolve an absolute path to the original image file from the argument
      * @param string $imagePath
-     * @return mixed|string
-     * @throws \Magento\Framework\Exception\LocalizedException
+     * @return $this
      */
     public function make(string $imagePath)
     {
+        $this->_resetImage();
+
         if (filter_var($imagePath, FILTER_VALIDATE_URL)) {
             $imagePath = str_replace($this->_mediaUrl, '', $imagePath);
         }
 
-        $imagePath = $this->_mediaDirectoryRead->getAbsolutePath($imagePath);
+        $absoluteImagePath = $this->_mediaDirectoryRead->getAbsolutePath($imagePath);
 
-        if (!is_file($imagePath)) {
-            throw new \Magento\Framework\Exception\LocalizedException(
-                __('Could not resolve image path from string. Please provide a valid file path.')
-            );
+        if (is_file($absoluteImagePath)) {
+            $this->_originalImagePath = $absoluteImagePath;
+            $this->_image = $this->_imageManager->make($this->_originalImagePath);
         }
-
-        $this->_commandQueue = [];
-        $this->_originalImagePath = $imagePath;
-        $this->_image = $this->_imageManager->make($this->_originalImagePath);
 
         return $this;
     }
@@ -264,28 +244,11 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     /**
-     * Returns whether images should be compressed or not
-     * @return bool
-     */
-    protected function _getCompressImages()
-    {
-        if (!is_bool($this->_compressImages)) {
-            $this->_compressImages = (bool)$this->scopeConfig->getValue(self::COMPRESS_IMAGES_XML_PATH);
-        }
-
-        return $this->_compressImages;
-    }
-
-    /**
      * Returns the quality of the encoded image
      * @return int
      */
     protected function _getQuality()
     {
-        if (!is_int($this->_quality)) {
-            $this->_quality = (int)$this->scopeConfig->getValue(self::DEFAULT_QUALITY_XML_PATH);
-        }
-
         return $this->_quality;
     }
 
@@ -304,7 +267,7 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private function _getFilename()
     {
-        $pathSegments = explode(DIRECTORY_SEPARATOR, $this->_originalImagePath);
+        $pathSegments = explode('/', $this->_originalImagePath);
 
         return end($pathSegments);
     }
@@ -334,6 +297,25 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private function _getCachedFilePath($fileUrl = false, $relative = false)
     {
-        return ($relative ? '' : ($fileUrl ? $this->_mediaUrl : $this->_mediaPath . DIRECTORY_SEPARATOR)) . $this->_getSavePath() . DIRECTORY_SEPARATOR . $this->_getFilename();
+        return ($relative ? '' : ($fileUrl ? $this->_mediaUrl : $this->_mediaPath . '/')) . $this->_getSavePath() . '/' . $this->_getFilename();
+    }
+
+    /**
+     * Resets the image and call queue
+     */
+    private function _resetImage()
+    {
+        $this->_commandQueue = [];
+        $this->_originalImagePath = null;
+        $this->_image = null;
+        $this->setQuality(self::DEFAULT_QUALITY);
+    }
+
+    /**
+     * @return bool
+     */
+    private function _getCompressImages()
+    {
+        return $this->_getQuality() < self::DEFAULT_QUALITY;
     }
 }

@@ -4,8 +4,6 @@
         <dakzilla>
             <intervention>
                 <cache_folder>cache/dakzilla_intervention/</cache_folder>
-                <default_quality>85</default_quality>
-                <compress_images>0</compress_images>
             </intervention>
         </dakzilla>
     </default>
