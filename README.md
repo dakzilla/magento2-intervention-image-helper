@@ -7,7 +7,7 @@ A useful template helper for applying transformations to images in Magento 2 usi
 `php bin/magento setup:upgrade`
 
 ## Features
-+ The image helper can be called from any template, without the need to create a custom block
++ The image helper can be called from any regular `.phtml` template, without the need to create a custom block
 + All of the transformation methods can be chained
 + By using an @var [DocComment](https://phpdoc.org/docs/latest/references/phpdoc/tags/var.html) as shown in the example below, your IDE will show autocompletion and documentation hints for each method
 + The images are cached automatically on creation, and are loaded from cache on every subsequent call
@@ -60,32 +60,19 @@ Or, you can do all of these at once with a short, chained syntax:
 
 The above example will create a horizontally-flipped, color-inverted and automatically resized version of the original picture that retains the correct ratio. Of course, a more common usage would be to simply crop and/or resize a picture without applying cosmetic filters.
 
-### Enabling image compression and setting the JPEG quality
-Once set as shown below, image compression and quality will be applied to every image that is generated with this module. This means that if you are generating multiple images on a single page, they will all share the compression settings.
-
-#### Defaults
-+ Image compression: Off
-+ JPEG quality: 85%
-
-From the template, call these methods on the image helper to enable JPEG compression and set the quality (1-100, lowest to highest):
+### Enabling JPEG compression and setting the quality
+JPEGs can be reduced in size by lowering the quality of the final output. PNGs will not be compressed, since they are a lossless format.
+From the template, call this method on the image helper to enable JPEG compression and set the quality (1-100, lowest to highest):
 ```
 <?php
 /** @var \Dakzilla\Intervention\Helper\Image $imageHelper */
-$imageHelper->setCompressImages()->setQuality(75);
-?>
-```
-
-If you're okay with the default quality level, you only need to call the `setCompressImages` method to enable compression:
-```
-<?php
-/** @var \Dakzilla\Intervention\Helper\Image $imageHelper */
-$imageHelper->setCompressImages();
+$imageHelper->make('path/to/my/image.jpeg')->setQuality(75);
 ?>
 ```
 
 ## Clearing the image cache
 Delete the image cache directory. By default, this is `<magento root>/pub/media/cache/dakzilla_intervention`
-To avoid potential permission issues, do not re-create this folder after deleting it. Let Magento re-create it automatically. 
+To avoid potential permission issues, do not re-create this folder after deleting it. Let Magento re-create it automatically with the server permissions. 
 
 ## Available transformation methods
 The helper provides IDE-compatible method hints for every available transformation method. For the most part, these methods are self-explanatory. For further information on these methods, please refer to the [Intervention Image documentation](http://image.intervention.io/).
@@ -127,7 +114,6 @@ The helper provides IDE-compatible method hints for every available transformati
 + This module does not include tests
 + This module does not provide a way to choose the image manipulation library (defaults to GD)
 + Some features from the Intervention Image library (like canvas or output streaming) are not available (but may be implemented later)
-+ This module throws exceptions instead of failing gracefully
 
 ## Compatibility
 This module has been tested with Magento 2.1.5. As Magento 2 is still evolving rapidly, there is no guarantee that it will work with every version. However, as this package is unassuming in what it achieves and respects Magento 2 best coding practices, I see no reason why it should cause issues in your installation.
@@ -140,10 +126,8 @@ This module has been tested with Magento 2.1.5. As Magento 2 is still evolving r
 
 ## To-do
 + Provide a way to clear image cache from admin and command line
-+ Allow the module to fail gracefully in case of a file error
 + Tests
 + Provide more control to end-user, like choosing the image manipulation library
-+ Enable JPEG quality control in admin
 + Allow cached images to expire
 + Automatically clean up expired image caches via cron
 + A way to create image templates (pre-made styles) to provide a shorter, cleaner template syntax
