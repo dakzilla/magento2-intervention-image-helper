@@ -72,6 +72,15 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
     /** @var \Magento\Framework\Filesystem\Directory\WriteInterface */
     protected $_mediaDirectoryWrite;
 
+    /** @var \Magento\Store\Model\StoreManagerInterface */
+    protected $_storeManager;
+
+    /** @var \Magento\Framework\App\Filesystem\DirectoryList */
+    protected $_directoryList;
+
+    /** @var \Magento\Framework\Filesystem */
+    protected $_fileSystem;
+
     /** @var array */
     protected $_unavailableMethods = [
         'backup',
@@ -104,15 +113,16 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         \Magento\Framework\App\Filesystem\DirectoryList $directoryList,
         \Magento\Framework\Filesystem $filesystem,
-        \Magento\Framework\App\Helper\Context $context
+        \Magento\Framework\App\Helper\Context $context,
+        \Intervention\Image\ImageManager $imageManager,
+        \SuperClosure\Serializer $closureSerializer
     )
     {
-        $this->_mediaUrl = $storeManager->getStore()->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_MEDIA);
-        $this->_mediaPath = $directoryList->getPath(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
-        $this->_mediaDirectoryRead = $filesystem->getDirectoryRead(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
-        $this->_mediaDirectoryWrite = $filesystem->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
-        $this->_closureSerializer = new \SuperClosure\Serializer(new \SuperClosure\Analyzer\TokenAnalyzer);
-        $this->_imageManager = new \Intervention\Image\ImageManager;
+        $this->_storeManager = $storeManager;
+        $this->_directoryList = $directoryList;
+        $this->_fileSystem = $filesystem;
+        $this->_closureSerializer = $closureSerializer;
+        $this->_imageManager = $imageManager;
 
         parent::__construct($context);
     }
@@ -139,7 +149,7 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
      */
     public function get()
     {
-        if ($this->_originalImagePath && $this->_image) {
+        if ($this->_originalImagePath) {
             return $this->_getCachedImage();
         }
 
@@ -149,6 +159,7 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
     /**
      * Set quality for the encoded images
      * @param int $quality
+     * @return $this
      */
     public function setQuality(int $quality)
     {
@@ -167,14 +178,13 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
         $this->_resetImage();
 
         if (filter_var($imagePath, FILTER_VALIDATE_URL)) {
-            $imagePath = str_replace($this->_mediaUrl, '', $imagePath);
+            $imagePath = str_replace($this->_getMediaUrl(), '', $imagePath);
         }
 
-        $absoluteImagePath = $this->_mediaDirectoryRead->getAbsolutePath($imagePath);
+        $absoluteImagePath = $this->_getMediaDirectoryRead()->getAbsolutePath($imagePath);
 
         if (is_file($absoluteImagePath)) {
             $this->_originalImagePath = $absoluteImagePath;
-            $this->_image = $this->_imageManager->make($this->_originalImagePath);
         }
 
         return $this;
@@ -199,13 +209,15 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
      */
     protected function _setCachedImage()
     {
+        $this->_image = $this->_imageManager->make($this->_originalImagePath);
+
         foreach ($this->_commandQueue as $command) {
             $this->_image = call_user_func_array([$this->_image, $command['name']], $command['arguments']);
         }
 
         $savePath = $this->_getCachedFilePath(false, true);
         $saveDirectory = dirname($this->_getCachedFilePath(false, true));
-        $this->_mediaDirectoryWrite->create($saveDirectory);
+        $this->_getMediaDirectoryWrite()->create($saveDirectory);
 
         if ($this->_getCompressImages()) {
             $encodedImage = $this->_image->stream(null, $this->_getQuality())->getContents();
@@ -213,7 +225,7 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
             $encodedImage = $this->_image->stream()->getContents();
         }
 
-        $this->_mediaDirectoryWrite->writeFile($savePath, $encodedImage);
+        $this->_getMediaDirectoryWrite()->writeFile($savePath, $encodedImage);
     }
 
     /**
@@ -262,6 +274,58 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     /**
+     * Cache and return media directory write access
+     * @return \Magento\Framework\Filesystem\Directory\WriteInterface
+     */
+    protected function _getMediaDirectoryWrite()
+    {
+        if (!$this->_mediaDirectoryWrite) {
+            $this->_mediaDirectoryWrite = $this->_fileSystem->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
+        }
+
+        return $this->_mediaDirectoryWrite;
+    }
+
+    /**
+     * Cache and return media directory read access
+     * @return \Magento\Framework\Filesystem\Directory\ReadInterface
+     */
+    protected function _getMediaDirectoryRead()
+    {
+        if (!$this->_mediaDirectoryRead) {
+            $this->_mediaDirectoryRead = $this->_fileSystem->getDirectoryRead(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
+        }
+
+        return $this->_mediaDirectoryRead;
+    }
+
+    /**
+     * Cache and return media URL for the current store
+     * @return string
+     */
+    protected function _getMediaUrl()
+    {
+        if (!$this->_mediaUrl) {
+            $this->_mediaUrl = $this->_storeManager->getStore()->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_MEDIA);
+        }
+
+        return $this->_mediaUrl;
+    }
+
+    /**
+     * Cache and return media path for the current store
+     * @return string
+     */
+    protected function _getMediaPath()
+    {
+        if (!$this->_mediaPath) {
+            $this->_mediaPath = $this->_directoryList->getPath(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
+        }
+
+        return $this->_mediaPath;
+    }
+
+    /**
      * Returns the file name only
      * @return string
      */
@@ -297,7 +361,7 @@ class Image extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private function _getCachedFilePath($fileUrl = false, $relative = false)
     {
-        return ($relative ? '' : ($fileUrl ? $this->_mediaUrl : $this->_mediaPath . '/')) . $this->_getSavePath() . '/' . $this->_getFilename();
+        return ($relative ? '' : ($fileUrl ? $this->_getMediaUrl() : $this->_getMediaPath() . '/')) . $this->_getSavePath() . '/' . $this->_getFilename();
     }
 
     /**
