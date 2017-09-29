@@ -2,39 +2,34 @@
 A useful template helper for applying transformations to images in Magento 2 using the [Intervention Image](http://image.intervention.io) library.
 
 ## Installation
-`composer require "dakzilla/intervention-image-helper:~1.0"`
+`composer require dakzilla/intervention-image-helper`
 
 `php bin/magento setup:upgrade`
 
 ## Features
-+ The image helper can be called from any regular `.phtml` template, without the need to create a custom block
++ The image helper can be called from any front-end `.phtml` template. No need to create a custom block!
 + All of the transformation methods can be chained
 + By using an @var [DocComment](https://phpdoc.org/docs/latest/references/phpdoc/tags/var.html) as shown in the example below, your IDE will show autocompletion and documentation hints for each method
 + The images are cached automatically on creation, and are loaded from cache on every subsequent call
 + Ability to set JPEG quality directly in template
-+ The module works great with Apptrian image optimizer for Magento 2 or any other image optimization module
++ Plays well with other image manipulation/optimization modules
 
 ## Usage
 ### Transforming an image from a template
-Call the image helper from any (.phtml) template using this code:
+Call the image helper from any front-end (.phtml) template using this code:
 ```
 <?php
 /** @var \Dakzilla\Intervention\Helper\Image $imageHelper */
 $imageHelper = $this->getImageHelper();
 ?>
 ```
-You can now call the `make` method to load an image URL...
-```
-$image = $imageHelper->make('http://mysite.com/media/wysiwyg/home/home-main.jpg')
-
-# Will resolve to /path/to/your/site/pub/media/wysiwyg/home/home-main.jpg
-```
-...or a relative image path
+You can now call the `make` method to a relative image path or an image URL
 ```
 $image = $imageHelper->make('test/Pineapple.jpg')
 
-# Will resolve to /path/to/your/site/pub/media/test/Pineapple.jpg
+Will resolve and load the file at /path/to/your/site/pub/media/test/Pineapple.jpg
 ```
+
 Then, you can chain the desired transformation methods, and finally call the `get` method to get the http link to the cached image:
 ```
 $imageUrl = $image->flip()
@@ -48,17 +43,13 @@ $imageUrl = $image->flip()
 ```
 Or, you can do all of these at once with a short, chained syntax:
 ```
-<img src="<?php echo $imageHelper
+<img src="<?php echo $this->getImageHelper()
     ->make('test/Pineapple.jpg')
     ->flip()
     ->invert()
-    ->resize(350, null, function ($constraint) {
-        $constraint->aspectRatio();
-    })
+    ->fit(350, 700)
     ->get(); ?>">
 ```
-
-The above example will create a horizontally-flipped, color-inverted and automatically resized version of the original picture that retains the correct ratio. Of course, a more common usage would be to simply crop and/or resize a picture without applying cosmetic filters.
 
 ### Enabling JPEG compression and setting the quality
 JPEGs can be reduced in size by lowering the quality of the final output. PNGs will not be compressed, since they are a lossless format.
@@ -116,12 +107,12 @@ The helper provides IDE-compatible method hints for every available transformati
 + Some features from the Intervention Image library (like canvas or output streaming) are not available (but may be implemented later)
 
 ## Compatibility
-This module has been tested with Magento 2.1.5. As Magento 2 is still evolving rapidly, there is no guarantee that it will work with every version. However, as this package is unassuming in what it achieves and respects Magento 2 best coding practices, I see no reason why it should cause issues in your installation.
+This module has been tested with Magento 2.1 and Magento 2.2.0. As Magento 2 is still evolving rapidly, there is no guarantee that it will work with every version. However, as this package is unassuming in what it achieves and respects Magento 2 best coding practices, I see no reason why it should cause issues in your installation.
 
 ## Requirements
 + PHP 7.0 and above
-+ Magento 2.1.0 and above
-+ GD or Imagick library
++ Magento 2.1 or 2.2 Open Source or Commerce Edition
++ GD library
 + Fileinfo Extension
 
 ## To-do
