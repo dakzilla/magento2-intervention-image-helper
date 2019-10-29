@@ -107,11 +107,11 @@ The helper provides IDE-compatible method hints for every available transformati
 + Some features from the Intervention Image library (like canvas or output streaming) are not available (but may be implemented later)
 
 ## Compatibility
-This module has been tested with Magento 2.1 and Magento 2.2.0. As Magento 2 is still evolving rapidly, there is no guarantee that it will work with every version. However, as this package is unassuming in what it achieves and respects Magento 2 best coding practices, I see no reason why it should cause issues in your installation.
+This module has been tested with Magento 2.1 through 2.3. As Magento 2 is still evolving rapidly, there is no guarantee that it will work with every version. However, as this package is unassuming in what it achieves and respects Magento 2 best coding practices, I see no reason why it should cause issues in your installation.
 
 ## Requirements
 + PHP 7.0 and above
-+ Magento 2.1 or 2.2 Open Source or Commerce Edition
++ Tested on Magento Open Source 2.1 - 2.3 and Commerce Edition 2.2
 + GD library
 + Fileinfo Extension
 
